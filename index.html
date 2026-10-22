@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Biofeedback Vocal - CPPS Corregido</title>
+    <title>Biofeedback Vocal - HNR de Alta Calidad</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -256,25 +256,25 @@
 
     <div class="modal" id="modalSettings">
         <div class="modal-content">
-            <h2>Calibración Clínica</h2>
+            <h2>Ajustes de Calibración</h2>
             
             <div class="live-monitor">
-                CPPS Bruto: <span id="cppsLiveVal">0.0</span> dB<br>
+                Indice Armónico (HNR): <span id="hnrLiveVal">0.0</span> dB<br>
                 Nivel Fluidez: <span id="smoothPercentVal">0</span>%
             </div>
 
             <div class="setting-group">
-                <label>Umbral Constricción (Rojo) <span class="val-display" id="minCppsVal">2.0 dB</span></label>
-                <input type="range" id="sliderMinCpps" min="0.5" max="10.0" step="0.2" value="2.0">
+                <label>Umbral Constricción (Rojo) <span class="val-display" id="minHnrVal">3.0 dB</span></label>
+                <input type="range" id="sliderMinHnr" min="0.0" max="12.0" step="0.5" value="3.0">
             </div>
 
             <div class="setting-group">
-                <label>Umbral Fluidez Meta (Verde) <span class="val-display" id="maxCppsVal">8.0 dB</span></label>
-                <input type="range" id="sliderMaxCpps" min="3.0" max="20.0" step="0.5" value="8.0">
+                <label>Umbral Fluidez Meta (Verde) <span class="val-display" id="maxHnrVal">15.0 dB</span></label>
+                <input type="range" id="sliderMaxHnr" min="8.0" max="25.0" step="0.5" value="15.0">
             </div>
 
             <div class="setting-group">
-                <label>Sensibilidad Micrófono / Puerta <span class="val-display" id="gateVal">-45 dB</span></label>
+                <label>Puerta de Ruido / Sensibilidad <span class="val-display" id="gateVal">-45 dB</span></label>
                 <input type="range" id="sliderGate" min="-60" max="-20" step="1" value="-45">
             </div>
 
@@ -286,9 +286,9 @@
         let audioCtx, analyser, micStream;
         let isRunning = false;
 
-        // Umbrales por defecto adaptados a la respuesta de smartphones
-        let minCPPS = 2.0;   // Debajo de esto = Voz muy constreñida (0% / Rojo)
-        let maxCPPS = 8.0;   // Encima de esto = Voz fluida (100% / Verde)
+        // Umbrales de HNR (Harmonics-to-Noise Ratio)
+        let minHNR = 3.0;   // Voz constreñida/ruidosa
+        let maxHNR = 15.0;  // Voz armónica/fluida
         let noiseGateDb = -45;
 
         let currentFluencySmooth = 0;
@@ -301,27 +301,27 @@
         const statusText = document.getElementById('statusText');
         const progressBar = document.getElementById('progressBar');
 
-        const sliderMinCpps = document.getElementById('sliderMinCpps');
-        const sliderMaxCpps = document.getElementById('sliderMaxCpps');
+        const sliderMinHnr = document.getElementById('sliderMinHnr');
+        const sliderMaxHnr = document.getElementById('sliderMaxHnr');
         const sliderGate = document.getElementById('sliderGate');
-        const minCppsVal = document.getElementById('minCppsVal');
-        const maxCppsVal = document.getElementById('maxCppsVal');
+        const minHnrVal = document.getElementById('minHnrVal');
+        const maxHnrVal = document.getElementById('maxHnrVal');
         const gateVal = document.getElementById('gateVal');
-        const cppsLiveVal = document.getElementById('cppsLiveVal');
+        const hnrLiveVal = document.getElementById('hnrLiveVal');
         const smoothPercentVal = document.getElementById('smoothPercentVal');
 
         btnStart.addEventListener('click', toggleAudio);
         btnSettings.addEventListener('click', () => modalSettings.style.display = 'block');
         btnCloseSettings.addEventListener('click', () => modalSettings.style.display = 'none');
 
-        sliderMinCpps.addEventListener('input', (e) => {
-            minCPPS = parseFloat(e.target.value);
-            minCppsVal.textContent = minCPPS.toFixed(1) + ' dB';
+        sliderMinHnr.addEventListener('input', (e) => {
+            minHNR = parseFloat(e.target.value);
+            minHnrVal.textContent = minHNR.toFixed(1) + ' dB';
         });
 
-        sliderMaxCpps.addEventListener('input', (e) => {
-            maxCPPS = parseFloat(e.target.value);
-            maxCppsVal.textContent = maxCPPS.toFixed(1) + ' dB';
+        sliderMaxHnr.addEventListener('input', (e) => {
+            maxHNR = parseFloat(e.target.value);
+            maxHnrVal.textContent = maxHNR.toFixed(1) + ' dB';
         });
 
         sliderGate.addEventListener('input', (e) => {
@@ -385,7 +385,7 @@
             progressBar.style.backgroundColor = '#ef4444';
         }
 
-        // --- ALGORITMO REVISION RIGUROSA CPPS ---
+        // --- MOTOR HNR POR AUTOCORRELACIÓN TIEMPO-FRECUENCIA ---
         function processLoop() {
             if (!isRunning) return;
 
@@ -393,7 +393,7 @@
             const timeData = new Float32Array(bufferLength);
             analyser.getFloatTimeDomainData(timeData);
 
-            // 1. Detección de Silencio / Ruido ambiente
+            // 1. Detección de volumen RMS
             let sumSq = 0;
             for (let i = 0; i < bufferLength; i++) {
                 sumSq += timeData[i] * timeData[i];
@@ -408,77 +408,68 @@
                 return;
             }
 
-            // 2. Espectro de Magnitud
-            const freqData = new Float32Array(analyser.frequencyBinCount);
-            analyser.getFloatFrequencyData(freqData);
-
-            // 3. Espectro Logarítmico (dB)
-            const logSpec = new Float32Array(freqData.length);
-            for (let i = 0; i < freqData.length; i++) {
-                logSpec[i] = Math.max(freqData[i], -100);
-            }
-
-            // 4. Cepstrum por autocorrelación espectral pura
-            const N = logSpec.length;
-            const cepstrum = new Float32Array(N);
-
-            for (let q = 0; q < N; q++) {
-                let sum = 0;
-                for (let k = 0; k < N; k++) {
-                    sum += logSpec[k] * Math.cos((Math.PI * k * q) / N);
-                }
-                cepstrum[q] = sum / N;
-            }
-
-            // 5. Rango de Quefrencia Humana (Pitch entre 75 Hz y 320 Hz)
+            // 2. Autocorrelación Pura para medir Periodicidad vs Aperiodicidad
+            const nSamples = timeData.length;
             const sampleRate = audioCtx.sampleRate;
-            const minQ = Math.floor(sampleRate / 320); 
-            const maxQ = Math.floor(sampleRate / 75);
+            const minLag = Math.floor(sampleRate / 350); // F0 Max 350Hz
+            const maxLag = Math.floor(sampleRate / 70);  // F0 Min 70Hz
 
-            let maxPeak = -Infinity;
-            let sumNoise = 0;
-            let countNoise = 0;
+            let maxCorr = -1;
 
-            for (let q = minQ; q <= maxQ && q < N; q++) {
-                const val = cepstrum[q];
-                if (val > maxPeak) {
-                    maxPeak = val;
-                }
-                sumNoise += val;
-                countNoise++;
+            // Normalización de energía r0
+            let r0 = 0;
+            for (let i = 0; i < nSamples; i++) {
+                r0 += timeData[i] * timeData[i];
             }
 
-            const baseline = sumNoise / countNoise;
-            
-            // Prominencia pura del pico armónico (CPPS en dB reales)
-            let cppsReal = Math.max(0, (maxPeak - baseline) * 3.0);
+            if (r0 > 0.00001) {
+                for (let lag = minLag; lag <= maxLag; lag++) {
+                    let rLag = 0;
+                    for (let i = 0; i < nSamples - lag; i++) {
+                        rLag += timeData[i] * timeData[i + lag];
+                    }
+                    const normCorr = rLag / r0;
+                    if (normCorr > maxCorr) {
+                        maxCorr = normCorr;
+                    }
+                }
+            }
 
-            // 6. Mapeo Progresivo Directo (A mayor CPPS -> Mayor Fluidez)
-            let fluencyRatio = (cppsReal - minCPPS) / (maxCPPS - minCPPS);
+            // Clave: R_max mide directamente la energía armónica pura
+            // Voz fluida: maxCorr cercano a 0.85 - 0.98
+            // Voz constreñida/estrangulada: maxCorr cae por debajo de 0.50
+            let hnrDb = 0;
+            if (maxCorr > 0.1 && maxCorr < 0.999) {
+                hnrDb = 10 * Math.log10(maxCorr / (1 - maxCorr));
+            } else if (maxCorr >= 0.999) {
+                hnrDb = 25.0;
+            }
+
+            hnrDb = Math.max(0, hnrDb);
+
+            // 3. Mapeo a Fluidez
+            let fluencyRatio = (hnrDb - minHNR) / (maxHNR - minHNR);
             fluencyRatio = Math.max(0, Math.min(1, fluencyRatio));
 
-            // Suavizado temporal ligero para respuesta fluida
             currentFluencySmooth += (fluencyRatio - currentFluencySmooth) * 0.2;
 
-            cppsLiveVal.textContent = cppsReal.toFixed(1);
-            updateVisuals(currentFluencySmooth, cppsReal);
+            hnrLiveVal.textContent = hnrDb.toFixed(1);
+            updateVisuals(currentFluencySmooth, hnrDb);
 
             requestAnimationFrame(processLoop);
         }
 
-        function updateVisuals(fluency, rawCpps) {
+        function updateVisuals(fluency, rawVal) {
             const percent = Math.round(fluency * 100);
             smoothPercentVal.textContent = percent;
 
-            // Tamaño progresivo
             const minSize = 80;
             const maxSize = 250;
             const currentSize = minSize + (maxSize - minSize) * fluency;
             circle.style.width = currentSize + 'px';
             circle.style.height = currentSize + 'px';
 
-            // Gradiente continuo de color: 0 = Rojo, 60 = Amarillo, 120 = Verde
-            const hue = fluency * 120;
+            const hue = fluency * 120; // 0=Rojo, 60=Amarillo, 120=Verde
             const colorHSL = `hsl(${hue}, 85%, 50%)`;
 
             circle.style.backgroundColor = colorHSL;
