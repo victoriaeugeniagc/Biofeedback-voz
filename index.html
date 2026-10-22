@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Biofeedback Vocal - CPPS Continuo</title>
+    <title>Biofeedback Vocal - CPPS Corregido</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -59,7 +59,6 @@
             cursor: pointer;
         }
 
-        /* ÁREA PRINCIPAL DEL CIRCULO DE BIOFEEDBACK */
         main {
             flex: 1;
             display: flex;
@@ -93,15 +92,14 @@
             width: 80px;
             height: 80px;
             border-radius: 50%;
-            background-color: #ef4444; /* Rojo inicial */
+            background-color: #ef4444;
             box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
-            transition: width 0.1s ease-out, height 0.1s ease-out, background-color 0.1s ease-out, box-shadow 0.1s ease-out;
+            transition: width 0.08s ease-out, height 0.08s ease-out, background-color 0.08s ease-out, box-shadow 0.08s ease-out;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* ETIQUETA DE ESTADO PROGRESIVO */
         .status-container {
             margin-top: 30px;
             text-align: center;
@@ -109,7 +107,7 @@
         }
 
         .status-text {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
             margin-bottom: 10px;
             color: #ef4444;
@@ -130,10 +128,9 @@
             height: 100%;
             background-color: #ef4444;
             border-radius: 6px;
-            transition: width 0.1s ease-out, background-color 0.1s ease-out;
+            transition: width 0.08s ease-out, background-color 0.08s ease-out;
         }
 
-        /* CONTROLES INFERIORES */
         footer {
             width: 100%;
             max-width: 500px;
@@ -163,7 +160,6 @@
             box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
         }
 
-        /* PANEL DE AJUSTES CLÍNICOS */
         .modal {
             display: none;
             position: fixed;
@@ -258,10 +254,9 @@
         <button class="btn-main" id="btnStart">INICIAR EJERCICIO</button>
     </footer>
 
-    <!-- MODAL DE AJUSTES CLÍNICOS -->
     <div class="modal" id="modalSettings">
         <div class="modal-content">
-            <h2>Ajustes de Calibración</h2>
+            <h2>Calibración Clínica</h2>
             
             <div class="live-monitor">
                 CPPS Bruto: <span id="cppsLiveVal">0.0</span> dB<br>
@@ -269,18 +264,18 @@
             </div>
 
             <div class="setting-group">
-                <label>Umbral Constricción (Rojo) <span class="val-display" id="minCppsVal">5.0 dB</span></label>
-                <input type="range" id="sliderMinCpps" min="1.0" max="15.0" step="0.5" value="5.0">
+                <label>Umbral Constricción (Rojo) <span class="val-display" id="minCppsVal">2.0 dB</span></label>
+                <input type="range" id="sliderMinCpps" min="0.5" max="10.0" step="0.2" value="2.0">
             </div>
 
             <div class="setting-group">
-                <label>Umbral Fluidez Meta (Verde) <span class="val-display" id="maxCppsVal">16.0 dB</span></label>
-                <input type="range" id="sliderMaxCpps" min="10.0" max="25.0" step="0.5" value="16.0">
+                <label>Umbral Fluidez Meta (Verde) <span class="val-display" id="maxCppsVal">8.0 dB</span></label>
+                <input type="range" id="sliderMaxCpps" min="3.0" max="20.0" step="0.5" value="8.0">
             </div>
 
             <div class="setting-group">
-                <label>Puerta de Ruido / Sensibilidad <span class="val-display" id="gateVal">-40 dB</span></label>
-                <input type="range" id="sliderGate" min="-60" max="-20" step="2" value="-40">
+                <label>Sensibilidad Micrófono / Puerta <span class="val-display" id="gateVal">-45 dB</span></label>
+                <input type="range" id="sliderGate" min="-60" max="-20" step="1" value="-45">
             </div>
 
             <button class="btn-close" id="btnCloseSettings">Guardar y Cerrar</button>
@@ -288,19 +283,16 @@
     </div>
 
     <script>
-        // --- ESTADO DE LA APLICACIÓN ---
         let audioCtx, analyser, micStream;
         let isRunning = false;
 
-        // Umbrales clínicos por defecto (ajustables en el panel)
-        let minCPPS = 5.0;   // Debajo de este valor = 0% fluidez (Totalmente rojo)
-        let maxCPPS = 16.0;  // Encima de este valor = 100% fluidez (Totalmente verde)
-        let noiseGateDb = -40;
+        // Umbrales por defecto adaptados a la respuesta de smartphones
+        let minCPPS = 2.0;   // Debajo de esto = Voz muy constreñida (0% / Rojo)
+        let maxCPPS = 8.0;   // Encima de esto = Voz fluida (100% / Verde)
+        let noiseGateDb = -45;
 
-        // Suavizado temporal de valores
         let currentFluencySmooth = 0;
 
-        // Elementos DOM
         const btnStart = document.getElementById('btnStart');
         const btnSettings = document.getElementById('btnSettings');
         const btnCloseSettings = document.getElementById('btnCloseSettings');
@@ -318,7 +310,6 @@
         const cppsLiveVal = document.getElementById('cppsLiveVal');
         const smoothPercentVal = document.getElementById('smoothPercentVal');
 
-        // --- MANEJO DE EVENTOS ---
         btnStart.addEventListener('click', toggleAudio);
         btnSettings.addEventListener('click', () => modalSettings.style.display = 'block');
         btnCloseSettings.addEventListener('click', () => modalSettings.style.display = 'none');
@@ -338,7 +329,6 @@
             gateVal.textContent = noiseGateDb + ' dB';
         });
 
-        // --- CONTROL DE AUDIO ---
         async function toggleAudio() {
             if (isRunning) {
                 stopAudio();
@@ -360,8 +350,8 @@
 
                 const source = audioCtx.createMediaStreamSource(micStream);
                 analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 2048; // Alta resolución espectral
-                analyser.smoothingTimeConstant = 0.3;
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.2;
                 source.connect(analyser);
 
                 isRunning = true;
@@ -395,7 +385,7 @@
             progressBar.style.backgroundColor = '#ef4444';
         }
 
-        // --- ALGORITMO DE CÁLCULO CEPSTRAL (CPPS OPTIMIZADO) ---
+        // --- ALGORITMO REVISION RIGUROSA CPPS ---
         function processLoop() {
             if (!isRunning) return;
 
@@ -403,7 +393,7 @@
             const timeData = new Float32Array(bufferLength);
             analyser.getFloatTimeDomainData(timeData);
 
-            // 1. Calcular volumen RMS para Puerta de Ruido
+            // 1. Detección de Silencio / Ruido ambiente
             let sumSq = 0;
             for (let i = 0; i < bufferLength; i++) {
                 sumSq += timeData[i] * timeData[i];
@@ -412,106 +402,95 @@
             const db = 20 * Math.log10(Math.max(rms, 0.00001));
 
             if (db < noiseGateDb) {
-                // Silencio / Ruido ambiente
-                currentFluencySmooth += (0 - currentFluencySmooth) * 0.1;
-                updateVisuals(0, 0);
+                currentFluencySmooth += (0 - currentFluencySmooth) * 0.15;
+                updateVisuals(currentFluencySmooth, 0);
                 requestAnimationFrame(processLoop);
                 return;
             }
 
-            // 2. Transformada de Fourier (Espectro de Frecuencia)
-            const freqData = new Float32Array(bufferLength / 2);
+            // 2. Espectro de Magnitud
+            const freqData = new Float32Array(analyser.frequencyBinCount);
             analyser.getFloatFrequencyData(freqData);
 
-            // 3. Espectro Logarítmico para Cepstrum
+            // 3. Espectro Logarítmico (dB)
             const logSpec = new Float32Array(freqData.length);
             for (let i = 0; i < freqData.length; i++) {
-                // Normalización y ajuste de sensibilidad
                 logSpec[i] = Math.max(freqData[i], -100);
             }
 
-            // 4. Transformada Inversa aproximada (Autocorrelación del espectro logarítmico = Quefrencia)
-            const quefrencyLength = logSpec.length;
-            const cepstrum = new Float32Array(quefrencyLength);
+            // 4. Cepstrum por autocorrelación espectral pura
+            const N = logSpec.length;
+            const cepstrum = new Float32Array(N);
 
-            for (let q = 0; q < quefrencyLength; q++) {
+            for (let q = 0; q < N; q++) {
                 let sum = 0;
-                for (let k = 0; k < quefrencyLength; k += 2) {
-                    sum += logSpec[k] * Math.cos((2 * Math.PI * k * q) / quefrencyLength);
+                for (let k = 0; k < N; k++) {
+                    sum += logSpec[k] * Math.cos((Math.PI * k * q) / N);
                 }
-                cepstrum[q] = sum / quefrencyLength;
+                cepstrum[q] = sum / N;
             }
 
-            // 5. Buscar Pico Cepstral en rango de F0 (60 Hz a 350 Hz -> Quefrencia adecuada)
+            // 5. Rango de Quefrencia Humana (Pitch entre 75 Hz y 320 Hz)
             const sampleRate = audioCtx.sampleRate;
-            const minQuef = Math.floor(sampleRate / 350); // F0 máx
-            const maxQuef = Math.floor(sampleRate / 60);  // F0 mín
+            const minQ = Math.floor(sampleRate / 320); 
+            const maxQ = Math.floor(sampleRate / 75);
 
-            let maxPeakVal = -Infinity;
-            let peakQuef = 0;
+            let maxPeak = -Infinity;
+            let sumNoise = 0;
+            let countNoise = 0;
 
-            for (let q = minQuef; q <= maxQuef && q < quefrencyLength; q++) {
-                if (cepstrum[q] > maxPeakVal) {
-                    maxPeakVal = cepstrum[q];
-                    peakQuef = q;
+            for (let q = minQ; q <= maxQ && q < N; q++) {
+                const val = cepstrum[q];
+                if (val > maxPeak) {
+                    maxPeak = val;
                 }
+                sumNoise += val;
+                countNoise++;
             }
 
-            // 6. Línea de Tendencia Base (Regresión Lineal Simplificada)
-            let sumBase = 0;
-            let countBase = 0;
-            for (let q = minQuef; q <= maxQuef && q < quefrencyLength; q++) {
-                sumBase += cepstrum[q];
-                countBase++;
-            }
-            const avgBase = sumBase / countBase;
+            const baseline = sumNoise / countNoise;
+            
+            // Prominencia pura del pico armónico (CPPS en dB reales)
+            let cppsReal = Math.max(0, (maxPeak - baseline) * 3.0);
 
-            // Prominencia del Pico Cepstral (CPPS Estimado)
-            let rawCPPS = Math.max(0, (maxPeakVal - avgBase) * 2.5);
+            // 6. Mapeo Progresivo Directo (A mayor CPPS -> Mayor Fluidez)
+            let fluencyRatio = (cppsReal - minCPPS) / (maxCPPS - minCPPS);
+            fluencyRatio = Math.max(0, Math.min(1, fluencyRatio));
 
-            // 7. Mapeo Progresivo Continuo (Sigmoide Suave)
-            let fluencyRatio = (rawCPPS - minCPPS) / (maxCPPS - minCPPS);
-            fluencyRatio = Math.max(0, Math.min(1, fluencyRatio)); // Acotar entre 0.0 y 1.0
+            // Suavizado temporal ligero para respuesta fluida
+            currentFluencySmooth += (fluencyRatio - currentFluencySmooth) * 0.2;
 
-            // Suavizado temporal continuo para evitar cambios bruscos
-            currentFluencySmooth += (fluencyRatio - currentFluencySmooth) * 0.15;
-
-            // Actualizar interfaz
-            cppsLiveVal.textContent = rawCPPS.toFixed(1);
-            updateVisuals(currentFluencySmooth, rawCPPS);
+            cppsLiveVal.textContent = cppsReal.toFixed(1);
+            updateVisuals(currentFluencySmooth, cppsReal);
 
             requestAnimationFrame(processLoop);
         }
 
-        // --- ACTUALIZACIÓN DE INTERFAZ GRÁFICA CONTINUA ---
         function updateVisuals(fluency, rawCpps) {
             const percent = Math.round(fluency * 100);
             smoothPercentVal.textContent = percent;
 
-            // A. TAMAÑO CONTINUO (De 80px a 250px)
+            // Tamaño progresivo
             const minSize = 80;
             const maxSize = 250;
             const currentSize = minSize + (maxSize - minSize) * fluency;
             circle.style.width = currentSize + 'px';
             circle.style.height = currentSize + 'px';
 
-            // B. COLOR CONTINUO (Modelo HSL: 0° Rojo -> 60° Amarillo -> 120° Verde)
-            const hue = fluency * 120; // 0 = Rojo puro, 60 = Amarillo, 120 = Verde puro
+            // Gradiente continuo de color: 0 = Rojo, 60 = Amarillo, 120 = Verde
+            const hue = fluency * 120;
             const colorHSL = `hsl(${hue}, 85%, 50%)`;
-            const shadowHSL = `rgba(${hue < 60 ? 239 : 34}, ${hue > 60 ? 197 : 68}, 68, 0.4)`;
 
             circle.style.backgroundColor = colorHSL;
-            circle.style.boxShadow = `0 0 ${20 + fluency * 25}px ${shadowHSL}`;
+            circle.style.boxShadow = `0 0 ${20 + fluency * 25}px ${colorHSL}`;
 
-            // C. BARRA DE PROGRESO Y TEXTOS DE ESTADO CONTINUOS
             progressBar.style.width = percent + '%';
             progressBar.style.backgroundColor = colorHSL;
-
             statusText.style.color = colorHSL;
 
-            if (percent < 25) {
+            if (percent < 20) {
                 statusText.textContent = "Voz Muy Constreñida (" + percent + "%)";
-            } else if (percent < 55) {
+            } else if (percent < 50) {
                 statusText.textContent = "Tensión Moderada (" + percent + "%)";
             } else if (percent < 80) {
                 statusText.textContent = "Emisión Aceptable (" + percent + "%)";
