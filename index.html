@@ -348,3 +348,177 @@
         }
 
         async function startAudio() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                micStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { 
+                        echoCancellation: false, 
+                        noiseSuppression: false, 
+                        autoGainControl: false 
+                    } 
+                });
+
+                const source = audioCtx.createMediaStreamSource(micStream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048; // Alta resolución espectral
+                analyser.smoothingTimeConstant = 0.3;
+                source.connect(analyser);
+
+                isRunning = true;
+                btnStart.textContent = "DETENER EJERCICIO";
+                btnStart.classList.add('active');
+                
+                processLoop();
+            } catch (err) {
+                alert("Error al acceder al micrófono: " + err.message);
+            }
+        }
+
+        function stopAudio() {
+            isRunning = false;
+            if (micStream) micStream.getTracks().forEach(t => t.stop());
+            if (audioCtx) audioCtx.close();
+
+            btnStart.textContent = "INICIAR EJERCICIO";
+            btnStart.classList.remove('active');
+            statusText.textContent = "Ejercicio en pausa";
+            statusText.style.color = "#94a3b8";
+            resetVisuals();
+        }
+
+        function resetVisuals() {
+            circle.style.width = '80px';
+            circle.style.height = '80px';
+            circle.style.backgroundColor = '#ef4444';
+            circle.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.4)';
+            progressBar.style.width = '0%';
+            progressBar.style.backgroundColor = '#ef4444';
+        }
+
+        // --- ALGORITMO DE CÁLCULO CEPSTRAL (CPPS OPTIMIZADO) ---
+        function processLoop() {
+            if (!isRunning) return;
+
+            const bufferLength = analyser.fftSize;
+            const timeData = new Float32Array(bufferLength);
+            analyser.getFloatTimeDomainData(timeData);
+
+            // 1. Calcular volumen RMS para Puerta de Ruido
+            let sumSq = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sumSq += timeData[i] * timeData[i];
+            }
+            const rms = Math.sqrt(sumSq / bufferLength);
+            const db = 20 * Math.log10(Math.max(rms, 0.00001));
+
+            if (db < noiseGateDb) {
+                // Silencio / Ruido ambiente
+                currentFluencySmooth += (0 - currentFluencySmooth) * 0.1;
+                updateVisuals(0, 0);
+                requestAnimationFrame(processLoop);
+                return;
+            }
+
+            // 2. Transformada de Fourier (Espectro de Frecuencia)
+            const freqData = new Float32Array(bufferLength / 2);
+            analyser.getFloatFrequencyData(freqData);
+
+            // 3. Espectro Logarítmico para Cepstrum
+            const logSpec = new Float32Array(freqData.length);
+            for (let i = 0; i < freqData.length; i++) {
+                // Normalización y ajuste de sensibilidad
+                logSpec[i] = Math.max(freqData[i], -100);
+            }
+
+            // 4. Transformada Inversa aproximada (Autocorrelación del espectro logarítmico = Quefrencia)
+            const quefrencyLength = logSpec.length;
+            const cepstrum = new Float32Array(quefrencyLength);
+
+            for (let q = 0; q < quefrencyLength; q++) {
+                let sum = 0;
+                for (let k = 0; k < quefrencyLength; k += 2) {
+                    sum += logSpec[k] * Math.cos((2 * Math.PI * k * q) / quefrencyLength);
+                }
+                cepstrum[q] = sum / quefrencyLength;
+            }
+
+            // 5. Buscar Pico Cepstral en rango de F0 (60 Hz a 350 Hz -> Quefrencia adecuada)
+            const sampleRate = audioCtx.sampleRate;
+            const minQuef = Math.floor(sampleRate / 350); // F0 máx
+            const maxQuef = Math.floor(sampleRate / 60);  // F0 mín
+
+            let maxPeakVal = -Infinity;
+            let peakQuef = 0;
+
+            for (let q = minQuef; q <= maxQuef && q < quefrencyLength; q++) {
+                if (cepstrum[q] > maxPeakVal) {
+                    maxPeakVal = cepstrum[q];
+                    peakQuef = q;
+                }
+            }
+
+            // 6. Línea de Tendencia Base (Regresión Lineal Simplificada)
+            let sumBase = 0;
+            let countBase = 0;
+            for (let q = minQuef; q <= maxQuef && q < quefrencyLength; q++) {
+                sumBase += cepstrum[q];
+                countBase++;
+            }
+            const avgBase = sumBase / countBase;
+
+            // Prominencia del Pico Cepstral (CPPS Estimado)
+            let rawCPPS = Math.max(0, (maxPeakVal - avgBase) * 2.5);
+
+            // 7. Mapeo Progresivo Continuo (Sigmoide Suave)
+            let fluencyRatio = (rawCPPS - minCPPS) / (maxCPPS - minCPPS);
+            fluencyRatio = Math.max(0, Math.min(1, fluencyRatio)); // Acotar entre 0.0 y 1.0
+
+            // Suavizado temporal continuo para evitar cambios bruscos
+            currentFluencySmooth += (fluencyRatio - currentFluencySmooth) * 0.15;
+
+            // Actualizar interfaz
+            cppsLiveVal.textContent = rawCPPS.toFixed(1);
+            updateVisuals(currentFluencySmooth, rawCPPS);
+
+            requestAnimationFrame(processLoop);
+        }
+
+        // --- ACTUALIZACIÓN DE INTERFAZ GRÁFICA CONTINUA ---
+        function updateVisuals(fluency, rawCpps) {
+            const percent = Math.round(fluency * 100);
+            smoothPercentVal.textContent = percent;
+
+            // A. TAMAÑO CONTINUO (De 80px a 250px)
+            const minSize = 80;
+            const maxSize = 250;
+            const currentSize = minSize + (maxSize - minSize) * fluency;
+            circle.style.width = currentSize + 'px';
+            circle.style.height = currentSize + 'px';
+
+            // B. COLOR CONTINUO (Modelo HSL: 0° Rojo -> 60° Amarillo -> 120° Verde)
+            const hue = fluency * 120; // 0 = Rojo puro, 60 = Amarillo, 120 = Verde puro
+            const colorHSL = `hsl(${hue}, 85%, 50%)`;
+            const shadowHSL = `rgba(${hue < 60 ? 239 : 34}, ${hue > 60 ? 197 : 68}, 68, 0.4)`;
+
+            circle.style.backgroundColor = colorHSL;
+            circle.style.boxShadow = `0 0 ${20 + fluency * 25}px ${shadowHSL}`;
+
+            // C. BARRA DE PROGRESO Y TEXTOS DE ESTADO CONTINUOS
+            progressBar.style.width = percent + '%';
+            progressBar.style.backgroundColor = colorHSL;
+
+            statusText.style.color = colorHSL;
+
+            if (percent < 25) {
+                statusText.textContent = "Voz Muy Constreñida (" + percent + "%)";
+            } else if (percent < 55) {
+                statusText.textContent = "Tensión Moderada (" + percent + "%)";
+            } else if (percent < 80) {
+                statusText.textContent = "Emisión Aceptable (" + percent + "%)";
+            } else {
+                statusText.textContent = "Voz Muy Fluida (" + percent + "%)";
+            }
+        }
+    </script>
+</body>
+</html>
