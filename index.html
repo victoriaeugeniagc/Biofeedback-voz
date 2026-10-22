@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Biofeedback Vocal - HNR de Alta Calidad</title>
+    <title>Biofeedback Vocal - Domicilio</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -47,16 +47,18 @@
             font-size: 1.2rem;
             font-weight: 600;
             color: var(--text-sub);
+            cursor: pointer;
         }
 
-        .btn-settings {
+        .btn-settings-hidden {
             background: var(--card-bg);
             border: 1px solid #334155;
             color: var(--text-sub);
-            padding: 8px 14px;
+            padding: 6px 12px;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             cursor: pointer;
+            display: none; /* Oculto por defecto para el paciente */
         }
 
         main {
@@ -109,16 +111,16 @@
         .status-text {
             font-size: 1.4rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             color: #ef4444;
             transition: color 0.15s ease;
         }
 
         .progress-bar-bg {
-            width: 80%;
-            height: 12px;
+            width: 85%;
+            height: 14px;
             background-color: #334155;
-            border-radius: 6px;
+            border-radius: 7px;
             margin: 0 auto;
             overflow: hidden;
         }
@@ -127,7 +129,7 @@
             width: 0%;
             height: 100%;
             background-color: #ef4444;
-            border-radius: 6px;
+            border-radius: 7px;
             transition: width 0.08s ease-out, background-color 0.08s ease-out;
         }
 
@@ -143,10 +145,10 @@
         .btn-main {
             background-color: #22c55e;
             color: #000;
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             font-weight: 700;
             border: none;
-            padding: 18px;
+            padding: 20px;
             border-radius: 16px;
             cursor: pointer;
             width: 100%;
@@ -160,6 +162,7 @@
             box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
         }
 
+        /* MODAL DE AJUSTES CLINICOS */
         .modal {
             display: none;
             position: fixed;
@@ -232,8 +235,8 @@
 <body>
 
     <header>
-        <h1>Biofeedback de Voz</h1>
-        <button class="btn-settings" id="btnSettings">⚙️ Ajustes</button>
+        <h1 id="appTitle">Ejercicios de Voz</h1>
+        <button class="btn-settings-hidden" id="btnSettings">⚙️ Calibración</button>
     </header>
 
     <main>
@@ -243,7 +246,7 @@
         </div>
 
         <div class="status-container">
-            <div class="status-text" id="statusText">Inicie el ejercicio</div>
+            <div class="status-text" id="statusText">Pulse Iniciar Ejercicio</div>
             <div class="progress-bar-bg">
                 <div class="progress-bar-fill" id="progressBar"></div>
             </div>
@@ -254,23 +257,24 @@
         <button class="btn-main" id="btnStart">INICIAR EJERCICIO</button>
     </footer>
 
+    <!-- MODAL DE CALIBRACIÓN -->
     <div class="modal" id="modalSettings">
         <div class="modal-content">
-            <h2>Ajustes de Calibración</h2>
+            <h2>Calibración Paciente</h2>
             
             <div class="live-monitor">
-                Indice Armónico (HNR): <span id="hnrLiveVal">0.0</span> dB<br>
+                Indice HNR Actual: <span id="hnrLiveVal">0.0</span> dB<br>
                 Nivel Fluidez: <span id="smoothPercentVal">0</span>%
             </div>
 
             <div class="setting-group">
-                <label>Umbral Constricción (Rojo) <span class="val-display" id="minHnrVal">3.0 dB</span></label>
-                <input type="range" id="sliderMinHnr" min="0.0" max="12.0" step="0.5" value="3.0">
+                <label>Umbral Constricción (Rojo) <span class="val-display" id="minHnrVal">2.0 dB</span></label>
+                <input type="range" id="sliderMinHnr" min="0.0" max="10.0" step="0.5" value="2.0">
             </div>
 
             <div class="setting-group">
-                <label>Umbral Fluidez Meta (Verde) <span class="val-display" id="maxHnrVal">15.0 dB</span></label>
-                <input type="range" id="sliderMaxHnr" min="8.0" max="25.0" step="0.5" value="15.0">
+                <label>Umbral Fluidez Meta (Verde) <span class="val-display" id="maxHnrVal">10.0 dB</span></label>
+                <input type="range" id="sliderMaxHnr" min="5.0" max="25.0" step="0.5" value="10.0">
             </div>
 
             <div class="setting-group">
@@ -278,7 +282,7 @@
                 <input type="range" id="sliderGate" min="-60" max="-20" step="1" value="-45">
             </div>
 
-            <button class="btn-close" id="btnCloseSettings">Guardar y Cerrar</button>
+            <button class="btn-close" id="btnCloseSettings">Guardar Calibración en Dispositivo</button>
         </div>
     </div>
 
@@ -286,10 +290,10 @@
         let audioCtx, analyser, micStream;
         let isRunning = false;
 
-        // Umbrales de HNR (Harmonics-to-Noise Ratio)
-        let minHNR = 3.0;   // Voz constreñida/ruidosa
-        let maxHNR = 15.0;  // Voz armónica/fluida
-        let noiseGateDb = -45;
+        // VALORES POR DEFECTO (Se sobrescriben con la memoria local si existen)
+        let minHNR = parseFloat(localStorage.getItem('minHNR')) || 2.0;
+        let maxHNR = parseFloat(localStorage.getItem('maxHNR')) || 10.0;
+        let noiseGateDb = parseInt(localStorage.getItem('noiseGateDb')) || -45;
 
         let currentFluencySmooth = 0;
 
@@ -300,6 +304,7 @@
         const circle = document.getElementById('circle');
         const statusText = document.getElementById('statusText');
         const progressBar = document.getElementById('progressBar');
+        const appTitle = document.getElementById('appTitle');
 
         const sliderMinHnr = document.getElementById('sliderMinHnr');
         const sliderMaxHnr = document.getElementById('sliderMaxHnr');
@@ -310,9 +315,47 @@
         const hnrLiveVal = document.getElementById('hnrLiveVal');
         const smoothPercentVal = document.getElementById('smoothPercentVal');
 
+        // Cargar valores guardados en los sliders
+        sliderMinHnr.value = minHNR;
+        sliderMaxHnr.value = maxHNR;
+        sliderGate.value = noiseGateDb;
+        minHnrVal.textContent = minHNR.toFixed(1) + ' dB';
+        maxHnrVal.textContent = maxHnrVal.textContent = maxHNR.toFixed(1) + ' dB';
+        gateVal.textContent = noiseGateDb + ' dB';
+
+        // Comprobar si se accede mediante URL de Admin (?admin=true)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('admin')) {
+            btnSettings.style.display = 'block';
+        }
+
+        // Doble toque en el título para abrir panel con clave
+        let lastTap = 0;
+        appTitle.addEventListener('click', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 500 && tapLength > 0) {
+                const pass = prompt("Introduzca la clave de logopeda:");
+                if (pass === "1234") {
+                    modalSettings.style.display = 'block';
+                } else if (pass !== null) {
+                    alert("Clave incorrecta");
+                }
+            }
+            lastTap = currentTime;
+        });
+
         btnStart.addEventListener('click', toggleAudio);
         btnSettings.addEventListener('click', () => modalSettings.style.display = 'block');
-        btnCloseSettings.addEventListener('click', () => modalSettings.style.display = 'none');
+        
+        btnCloseSettings.addEventListener('click', () => {
+            // Guardar permanentemente en la memoria local del dispositivo
+            localStorage.setItem('minHNR', minHNR);
+            localStorage.setItem('maxHNR', maxHNR);
+            localStorage.setItem('noiseGateDb', noiseGateDb);
+            modalSettings.style.display = 'none';
+            alert("Calibración guardada correctamente para este dispositivo.");
+        });
 
         sliderMinHnr.addEventListener('input', (e) => {
             minHNR = parseFloat(e.target.value);
@@ -360,7 +403,7 @@
                 
                 processLoop();
             } catch (err) {
-                alert("Error al acceder al micrófono: " + err.message);
+                alert("No se pudo acceder al micrófono.");
             }
         }
 
@@ -385,7 +428,6 @@
             progressBar.style.backgroundColor = '#ef4444';
         }
 
-        // --- MOTOR HNR POR AUTOCORRELACIÓN TIEMPO-FRECUENCIA ---
         function processLoop() {
             if (!isRunning) return;
 
@@ -393,7 +435,6 @@
             const timeData = new Float32Array(bufferLength);
             analyser.getFloatTimeDomainData(timeData);
 
-            // 1. Detección de volumen RMS
             let sumSq = 0;
             for (let i = 0; i < bufferLength; i++) {
                 sumSq += timeData[i] * timeData[i];
@@ -408,15 +449,12 @@
                 return;
             }
 
-            // 2. Autocorrelación Pura para medir Periodicidad vs Aperiodicidad
             const nSamples = timeData.length;
             const sampleRate = audioCtx.sampleRate;
-            const minLag = Math.floor(sampleRate / 350); // F0 Max 350Hz
-            const maxLag = Math.floor(sampleRate / 70);  // F0 Min 70Hz
+            const minLag = Math.floor(sampleRate / 350); 
+            const maxLag = Math.floor(sampleRate / 70);  
 
             let maxCorr = -1;
-
-            // Normalización de energía r0
             let r0 = 0;
             for (let i = 0; i < nSamples; i++) {
                 r0 += timeData[i] * timeData[i];
@@ -435,9 +473,6 @@
                 }
             }
 
-            // Clave: R_max mide directamente la energía armónica pura
-            // Voz fluida: maxCorr cercano a 0.85 - 0.98
-            // Voz constreñida/estrangulada: maxCorr cae por debajo de 0.50
             let hnrDb = 0;
             if (maxCorr > 0.1 && maxCorr < 0.999) {
                 hnrDb = 10 * Math.log10(maxCorr / (1 - maxCorr));
@@ -447,7 +482,6 @@
 
             hnrDb = Math.max(0, hnrDb);
 
-            // 3. Mapeo a Fluidez
             let fluencyRatio = (hnrDb - minHNR) / (maxHNR - minHNR);
             fluencyRatio = Math.max(0, Math.min(1, fluencyRatio));
 
@@ -469,7 +503,7 @@
             circle.style.width = currentSize + 'px';
             circle.style.height = currentSize + 'px';
 
-            const hue = fluency * 120; // 0=Rojo, 60=Amarillo, 120=Verde
+            const hue = fluency * 120;
             const colorHSL = `hsl(${hue}, 85%, 50%)`;
 
             circle.style.backgroundColor = colorHSL;
