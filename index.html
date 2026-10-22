@@ -2,598 +2,349 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Biofeedback Vocal CPPS</title>
-    <!-- Tailwind CSS desde CDN para estilos limpios y modernos -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Biofeedback Vocal - CPPS Continuo</title>
     <style>
-        /* Estilos personalizados para animaciones y estética */
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            touch-action: manipulation;
-        }
-        
-        /* Transiciones suaves para los elementos del Canvas y controles */
-        .smooth-transition {
-            transition: all 0.2s ease-out;
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent: #38bdf8;
         }
 
-        /* Ocultar scrollbar pero mantener funcionalidad */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        header {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        .btn-settings {
+            background: var(--card-bg);
+            border: 1px solid #334155;
+            color: var(--text-sub);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        /* ÁREA PRINCIPAL DEL CIRCULO DE BIOFEEDBACK */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .visualizer-container {
+            width: 280px;
+            height: 280px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .target-ring {
+            position: absolute;
+            width: 260px;
+            height: 260px;
+            border: 2px dashed #334155;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .feedback-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #ef4444; /* Rojo inicial */
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+            transition: width 0.1s ease-out, height 0.1s ease-out, background-color 0.1s ease-out, box-shadow 0.1s ease-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* ETIQUETA DE ESTADO PROGRESIVO */
+        .status-container {
+            margin-top: 30px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .status-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #ef4444;
+            transition: color 0.15s ease;
+        }
+
+        .progress-bar-bg {
+            width: 80%;
+            height: 12px;
+            background-color: #334155;
+            border-radius: 6px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background-color: #ef4444;
+            border-radius: 6px;
+            transition: width 0.1s ease-out, background-color 0.1s ease-out;
+        }
+
+        /* CONTROLES INFERIORES */
+        footer {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-main {
+            background-color: #22c55e;
+            color: #000;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border: none;
+            padding: 18px;
+            border-radius: 16px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3);
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .btn-main.active {
+            background-color: #ef4444;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+        }
+
+        /* PANEL DE AJUSTES CLÍNICOS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 100;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            max-width: 450px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid #334155;
+        }
+
+        .modal h2 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--accent);
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        .setting-group input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        .val-display {
+            font-weight: bold;
+            color: var(--text-main);
+            float: right;
+        }
+
+        .live-monitor {
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+        }
+
+        .btn-close {
+            background: var(--accent);
+            color: #0f172a;
+            font-weight: bold;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 10px;
+            cursor: pointer;
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between overflow-hidden select-none">
+<body>
 
-    <!-- CABECERA PRINCIPAL / BARRA SUPERIOR -->
-    <header class="w-full p-4 flex justify-between items-center bg-slate-800/60 backdrop-blur border-b border-slate-700/50">
-        <div class="flex items-center space-x-3">
-            <div class="w-4 h-4 rounded-full bg-emerald-500 animate-pulse" id="statusDot"></div>
-            <h1 class="text-xl md:text-2xl font-bold tracking-wide text-slate-100">Biofeedback Vocal</h1>
-        </div>
-        
-        <!-- Botón discreto de configuración para el Logopeda -->
-        <button id="toggleConfigBtn" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm font-medium flex items-center space-x-2 transition-colors border border-slate-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-            </svg>
-            <span class="hidden sm:inline">Ajustes Clínicos</span>
-        </button>
+    <header>
+        <h1>Biofeedback de Voz</h1>
+        <button class="btn-settings" id="btnSettings">⚙️ Ajustes</button>
     </header>
 
-    <!-- PANEL LATERAL/DESPLEGABLE DE CONFIGURACIÓN CLÍNICA (LOGOPEDA) -->
-    <div id="configPanel" class="hidden fixed inset-y-0 right-0 w-full max-w-sm bg-slate-800 shadow-2xl z-50 p-6 flex flex-col justify-between border-l border-slate-700 overflow-y-auto no-scrollbar">
-        <div>
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-emerald-400">Calibración Logopédica</h2>
-                <button id="closeConfigBtn" class="text-slate-400 hover:text-white p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Monitor métrico en tiempo real para el profesional -->
-            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700 mb-6 space-y-2">
-                <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Monitor en Vivo (Solo Profesional)</div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-slate-300">CPPS Estimado:</span>
-                    <span id="liveCppsVal" class="text-lg font-mono font-bold text-emerald-400">0.0 dB</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-slate-300">Volumen (RMS):</span>
-                    <span id="liveRmsVal" class="text-lg font-mono font-bold text-sky-400">0.00</span>
-                </div>
-            </div>
-
-            <!-- Modo de Ejercicio -->
-            <div class="mb-6">
-                <label class="block text-sm font-semibold text-slate-300 mb-2">Modo de Ejercicio</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button id="modeVowelBtn" class="py-2 px-3 bg-emerald-600 text-white rounded-lg font-medium text-sm border border-emerald-500 shadow">Vocal Sostenida</button>
-                    <button id="modeSpeechBtn" class="py-2 px-3 bg-slate-700 text-slate-300 rounded-lg font-medium text-sm border border-slate-600 hover:bg-slate-650">Habla Continua</button>
-                </div>
-            </div>
-
-            <!-- Controles de Umbrales CPPS -->
-            <div class="space-y-6">
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-red-400 font-medium">Umbral Mínimo (Mala calidad/Tensión):</span>
-                        <span id="minThresholdLabel" class="font-mono text-red-400">8.0 dB</span>
-                    </div>
-                    <input type="range" id="minThresholdSlider" min="2" max="18" step="0.5" value="8" class="w-full accent-red-500 bg-slate-700 h-2 rounded-lg cursor-pointer">
-                    <p class="text-xs text-slate-400 mt-1">Valores por debajo mostrarán la esfera pequeña y roja.</p>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-emerald-400 font-medium">Umbral Máximo (Voz Liberada):</span>
-                        <span id="maxThresholdLabel" class="font-mono text-emerald-400">16.0 dB</span>
-                    </div>
-                    <input type="range" id="maxThresholdSlider" min="10" max="25" step="0.5" value="16" class="w-full accent-emerald-500 bg-slate-700 h-2 rounded-lg cursor-pointer">
-                    <p class="text-xs text-slate-400 mt-1">Valores por encima expandirán la esfera a verde brillante.</p>
-                </div>
-
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-sky-400 font-medium">Puerta de Ruido (Filtro Silencio):</span>
-                        <span id="noiseGateLabel" class="font-mono text-sky-400">0.02</span>
-                    </div>
-                    <input type="range" id="noiseGateSlider" min="0.005" max="0.1" step="0.005" value="0.02" class="w-full accent-sky-500 bg-slate-700 h-2 rounded-lg cursor-pointer">
-                    <p class="text-xs text-slate-400 mt-1">Evita que el ruido ambiente active la esfera.</p>
-                </div>
-            </div>
+    <main>
+        <div class="visualizer-container">
+            <div class="target-ring"></div>
+            <div class="feedback-circle" id="circle"></div>
         </div>
 
-        <div class="mt-6 pt-4 border-t border-slate-700 text-center">
-            <button id="saveConfigBtn" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition">Guardar y Cerrar</button>
-        </div>
-    </div>
-
-    <!-- ÁREA PRINCIPAL DE BIOFEEDBACK (INTERFAZ PACIENTE) -->
-    <main class="flex-1 flex flex-col items-center justify-center p-4 relative">
-        
-        <!-- CANVAS PARA EL CÍRCULO INTERACTIVO -->
-        <div class="relative flex items-center justify-center w-full max-w-md aspect-square my-auto">
-            <canvas id="feedbackCanvas" class="w-full h-full max-w-[380px] max-h-[380px]"></canvas>
-        </div>
-
-        <!-- MENSAJE VISUAL DE ESTADO (CLARO Y ACCESIBLE) -->
-        <div class="text-center mt-2 mb-6 h-16 flex items-center justify-center">
-            <p id="feedbackText" class="text-2xl md:text-3xl font-extrabold tracking-wide text-slate-400 transition-all duration-300">
-                Pulse INICIAR para comenzar
-            </p>
+        <div class="status-container">
+            <div class="status-text" id="statusText">Inicie el ejercicio</div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
         </div>
     </main>
 
-    <!-- BARRA INFERIOR DE ACCIÓN (BOTÓN GIGANTE) -->
-    <footer class="w-full p-6 bg-slate-800/80 backdrop-blur border-t border-slate-700/60 flex justify-center">
-        <button id="startStopBtn" class="w-full max-w-md py-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-2xl rounded-2xl shadow-lg hover:shadow-emerald-900/40 transform active:scale-95 transition-all flex items-center justify-center space-x-3">
-            <svg id="playIcon" class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
-            </svg>
-            <span id="btnText">INICIAR EJERCICIO</span>
-        </button>
+    <footer>
+        <button class="btn-main" id="btnStart">INICIAR EJERCICIO</button>
     </footer>
 
-    <!-- LÓGICA DE PROCESAMIENTO Y ÁLGEBRA CEPSTRAL (JAVASCRIPT) -->
-    <script>
-        /**
-         * SISTEMA DE BIOFEEDBACK VOCAL BASADO EN CPPS
-         * Procesamiento 100% Local en Tiempo Real utilizando Web Audio API.
-         */
+    <!-- MODAL DE AJUSTES CLÍNICOS -->
+    <div class="modal" id="modalSettings">
+        <div class="modal-content">
+            <h2>Ajustes de Calibración</h2>
+            
+            <div class="live-monitor">
+                CPPS Bruto: <span id="cppsLiveVal">0.0</span> dB<br>
+                Nivel Fluidez: <span id="smoothPercentVal">0</span>%
+            </div>
 
-        // --- ESTADO Y CONFIGURACIÓN GLOBAL ---
-        let audioCtx = null;
-        let analyserNode = null;
-        let microphoneStream = null;
-        let javascriptNode = null;
+            <div class="setting-group">
+                <label>Umbral Constricción (Rojo) <span class="val-display" id="minCppsVal">5.0 dB</span></label>
+                <input type="range" id="sliderMinCpps" min="1.0" max="15.0" step="0.5" value="5.0">
+            </div>
+
+            <div class="setting-group">
+                <label>Umbral Fluidez Meta (Verde) <span class="val-display" id="maxCppsVal">16.0 dB</span></label>
+                <input type="range" id="sliderMaxCpps" min="10.0" max="25.0" step="0.5" value="16.0">
+            </div>
+
+            <div class="setting-group">
+                <label>Puerta de Ruido / Sensibilidad <span class="val-display" id="gateVal">-40 dB</span></label>
+                <input type="range" id="sliderGate" min="-60" max="-20" step="2" value="-40">
+            </div>
+
+            <button class="btn-close" id="btnCloseSettings">Guardar y Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        // --- ESTADO DE LA APLICACIÓN ---
+        let audioCtx, analyser, micStream;
         let isRunning = false;
 
-        // Configuración por defecto (Calibración)
-        let config = {
-            minCPPS: 8.0,      // Umbral inferior (Rojo/Tensión) en dB
-            maxCPPS: 16.0,     // Umbral superior (Verde/Liberada) en dB
-            noiseGate: 0.02,   // Sensibilidad mínima de volumen RMS
-            mode: 'vowel',     // 'vowel' o 'speech'
-            smoothing: 0.15    // Factor de suavizado (Low-pass) para estabilidad visual
-        };
+        // Umbrales clínicos por defecto (ajustables en el panel)
+        let minCPPS = 5.0;   // Debajo de este valor = 0% fluidez (Totalmente rojo)
+        let maxCPPS = 16.0;  // Encima de este valor = 100% fluidez (Totalmente verde)
+        let noiseGateDb = -40;
 
-        // Estado dinámico del biofeedback
-        let currentCPPS = 0;
-        let currentRMS = 0;
-        let smoothedCPPS = 0;
-        let targetCircleRadius = 0.2; // Escala entre 0.15 y 0.8
-        let currentCircleRadius = 0.2;
-        let targetColor = { r: 239, g: 68, b: 68 }; // Rojo inicial (#ef4444)
-        let currentColor = { r: 239, g: 68, b: 68 };
+        // Suavizado temporal de valores
+        let currentFluencySmooth = 0;
 
         // Elementos DOM
-        const canvas = document.getElementById('feedbackCanvas');
-        const ctx = canvas.getContext('2d');
-        const startStopBtn = document.getElementById('startStopBtn');
-        const btnText = document.getElementById('btnText');
-        const playIcon = document.getElementById('playIcon');
-        const feedbackText = document.getElementById('feedbackText');
-        const statusDot = document.getElementById('statusDot');
+        const btnStart = document.getElementById('btnStart');
+        const btnSettings = document.getElementById('btnSettings');
+        const btnCloseSettings = document.getElementById('btnCloseSettings');
+        const modalSettings = document.getElementById('modalSettings');
+        const circle = document.getElementById('circle');
+        const statusText = document.getElementById('statusText');
+        const progressBar = document.getElementById('progressBar');
 
-        // Elementos de Configuración
-        const configPanel = document.getElementById('configPanel');
-        const toggleConfigBtn = document.getElementById('toggleConfigBtn');
-        const closeConfigBtn = document.getElementById('closeConfigBtn');
-        const saveConfigBtn = document.getElementById('saveConfigBtn');
-        const minThresholdSlider = document.getElementById('minThresholdSlider');
-        const maxThresholdSlider = document.getElementById('maxThresholdSlider');
-        const noiseGateSlider = document.getElementById('noiseGateSlider');
-        const minThresholdLabel = document.getElementById('minThresholdLabel');
-        const maxThresholdLabel = document.getElementById('maxThresholdLabel');
-        const noiseGateLabel = document.getElementById('noiseGateLabel');
-        const liveCppsVal = document.getElementById('liveCppsVal');
-        const liveRmsVal = document.getElementById('liveRmsVal');
-        const modeVowelBtn = document.getElementById('modeVowelBtn');
-        const modeSpeechBtn = document.getElementById('modeSpeechBtn');
+        const sliderMinCpps = document.getElementById('sliderMinCpps');
+        const sliderMaxCpps = document.getElementById('sliderMaxCpps');
+        const sliderGate = document.getElementById('sliderGate');
+        const minCppsVal = document.getElementById('minCppsVal');
+        const maxCppsVal = document.getElementById('maxCppsVal');
+        const gateVal = document.getElementById('gateVal');
+        const cppsLiveVal = document.getElementById('cppsLiveVal');
+        const smoothPercentVal = document.getElementById('smoothPercentVal');
 
-        // Ajustar resolución del Canvas dinámicamente
-        function resizeCanvas() {
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * window.devicePixelRatio || 300;
-            canvas.height = rect.height * window.devicePixelRatio || 300;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        // --- MANEJO DE EVENTOS ---
+        btnStart.addEventListener('click', toggleAudio);
+        btnSettings.addEventListener('click', () => modalSettings.style.display = 'block');
+        btnCloseSettings.addEventListener('click', () => modalSettings.style.display = 'none');
 
-        // --- ALGORITMO Y CÁLCULO CEPSTRAL (CPPS SIMPLIFICADO) ---
+        sliderMinCpps.addEventListener('input', (e) => {
+            minCPPS = parseFloat(e.target.value);
+            minCppsVal.textContent = minCPPS.toFixed(1) + ' dB';
+        });
 
-        /**
-         * Calcula una aproximación rápida y en tiempo real del CPPS
-         * 1. Obtiene la señal temporal del micrófono.
-         * 2. Aplica FFT para obtener el Espectro de Frecuencia.
-         * 3. Calcula el Logaritmo del Espectro.
-         * 4. Aplica una IFFT/FFT inversa (o aproximación Cepstral) para obtener el Cepstrum.
-         * 5. Mide el pico dominante del Cepstrum frente a la línea base de regresión.
-         */
-        function calculateCPPS(timeDomainBuffer, sampleRate) {
-            const N = timeDomainBuffer.length;
-            
-            // 1. Calcular RMS (Volumen)
-            let sumSquare = 0;
-            for (let i = 0; i < N; i++) {
-                sumSquare += timeDomainBuffer[i] * timeDomainBuffer[i];
-            }
-            currentRMS = Math.sqrt(sumSquare / N);
+        sliderMaxCpps.addEventListener('input', (e) => {
+            maxCPPS = parseFloat(e.target.value);
+            maxCppsVal.textContent = maxCPPS.toFixed(1) + ' dB';
+        });
 
-            // Si no supera la puerta de ruido, retornar 0
-            if (currentRMS < config.noiseGate) {
-                return 0;
-            }
+        sliderGate.addEventListener('input', (e) => {
+            noiseGateDb = parseInt(e.target.value);
+            gateVal.textContent = noiseGateDb + ' dB';
+        });
 
-            // 2. FFT directa sobre la señal temporal (Magnitud Espectral)
-            const real = new Float32Array(N);
-            const imag = new Float32Array(N);
-            for (let i = 0; i < N; i++) {
-                // Ventana de Hanning básica
-                const window = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
-                real[i] = timeDomainBuffer[i] * window;
-                imag[i] = 0;
-            }
-
-            simpleFFT(real, imag);
-
-            // 3. Espectro de Logaritmo de Magnitud
-            const logSpectrum = new Float32Array(N / 2);
-            for (let i = 0; i < N / 2; i++) {
-                const mag = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
-                logSpectrum[i] = Math.log(mag + 1e-6); // Evitar log(0)
-            }
-
-            // 4. Cepstrum (FFT sobre el Espectro Logarítmico)
-            const cepstrumReal = new Float32Array(N / 2);
-            const cepstrumImag = new Float32Array(N / 2);
-            for (let i = 0; i < N / 2; i++) {
-                cepstrumReal[i] = logSpectrum[i];
-                cepstrumImag[i] = 0;
-            }
-
-            simpleFFT(cepstrumReal, cepstrumImag);
-
-            const cepstrum = new Float32Array(N / 4);
-            for (let i = 0; i < N / 4; i++) {
-                cepstrum[i] = Math.sqrt(cepstrumReal[i] * cepstrumReal[i] + cepstrumImag[i] * cepstrumImag[i]);
-            }
-
-            // 5. Búsqueda del pico cepstral en el rango de frecuencia vocal (F0 habitual: 60Hz - 400Hz)
-            // Quefrencia r = sampleRate / F0
-            const minQuefrency = Math.floor(sampleRate / 400); // ~110 muestras a 44.1kHz
-            const maxQuefrency = Math.floor(sampleRate / 60);  // ~735 muestras a 44.1kHz
-
-            let maxPeak = 0;
-            let maxIdx = minQuefrency;
-            let sumVal = 0;
-            let count = 0;
-
-            for (let i = minQuefrency; i <= maxQuefrency && i < cepstrum.length; i++) {
-                sumVal += cepstrum[i];
-                count++;
-                if (cepstrum[i] > maxPeak) {
-                    maxPeak = cepstrum[i];
-                    maxIdx = i;
-                }
-            }
-
-            const meanTrend = count > 0 ? sumVal / count : 1;
-            
-            // Prominencia estimada (Diferencia en dB entre el pico y la media local del Cepstrum)
-            if (meanTrend <= 0) return 0;
-            
-            let cppsRatio = 20 * Math.log10(maxPeak / meanTrend);
-            
-            // Factor de escala empírico para mapear a rangos estándares clínicos (4 - 22 dB)
-            let estimatedCPPS = Math.max(0, cppsRatio * 1.8);
-
-            return estimatedCPPS;
-        }
-
-        /**
-         * FFT Radix-2 Simple (In-place) para procesamiento local rápido
-         */
-        function simpleFFT(real, imag) {
-            const n = real.length;
-            if (n <= 1) return;
-
-            // Bit-reversal
-            let j = 0;
-            for (let i = 0; i < n - 1; i++) {
-                if (i < j) {
-                    let tempR = real[i]; real[i] = real[j]; real[j] = tempR;
-                    let tempI = imag[i]; imag[i] = imag[j]; imag[j] = tempI;
-                }
-                let k = n >> 1;
-                while (k <= j) {
-                    j -= k;
-                    k >>= 1;
-                }
-                j += k;
-            }
-
-            // Mariposas Cooley-Tukey
-            for (let len = 2; len <= n; len <<= 1) {
-                let halfLen = len >> 1;
-                let angle = -2 * Math.PI / len;
-                let wstepR = Math.cos(angle);
-                let wstepI = Math.sin(angle);
-
-                for (let i = 0; i < n; i += len) {
-                    let wR = 1;
-                    let wI = 0;
-                    for (let j = 0; j < halfLen; j++) {
-                        let uR = real[i + j];
-                        let uI = imag[i + j];
-                        let vR = real[i + j + halfLen] * wR - imag[i + j + halfLen] * wI;
-                        let vI = real[i + j + halfLen] * wI + imag[i + j + halfLen] * wR;
-
-                        real[i + j] = uR + vR;
-                        imag[i + j] = uI + vI;
-                        real[i + j + halfLen] = uR - vR;
-                        imag[i + j + halfLen] = uI - vI;
-
-                        let nextWR = wR * wstepR - wI * wstepI;
-                        let nextWI = wR * wstepI + wI * wstepR;
-                        wR = nextWR;
-                        wI = nextWI;
-                    }
-                }
-            }
-        }
-
-        // --- SISTEMA DE AUDIO EN TIEMPO REAL ---
-
-        async function startAudioProcessing() {
-            try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Solicitar micrófono
-                microphoneStream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
-                    }
-                });
-
-                const source = audioCtx.createMediaStreamSource(microphoneStream);
-                
-                // Nodo para extraer muestras de audio en bloques de 2048 (~46ms a 44.1kHz)
-                javascriptNode = audioCtx.createScriptProcessor(2048, 1, 1);
-
-                javascriptNode.onaudioprocess = function(e) {
-                    if (!isRunning) return;
-                    
-                    const inputBuffer = e.inputBuffer.getChannelData(0);
-                    currentCPPS = calculateCPPS(inputBuffer, audioCtx.sampleRate);
-                    
-                    // Actualizar indicadores clínicos si el panel está abierto
-                    if (!configPanel.classList.contains('hidden')) {
-                        liveCppsVal.innerText = currentCPPS.toFixed(1) + ' dB';
-                        liveRmsVal.innerText = currentRMS.toFixed(3);
-                    }
-                };
-
-                source.connect(javascriptNode);
-                javascriptNode.connect(audioCtx.destination);
-
-                isRunning = true;
-                statusDot.className = "w-4 h-4 rounded-full bg-emerald-500 animate-pulse";
-                updateButtonState(true);
-                
-                // Iniciar bucle de animación
-                requestAnimationFrame(renderLoop);
-
-            } catch (err) {
-                alert('No se pudo acceder al micrófono. Por favor, conceda permisos para realizar el ejercicio.');
-                console.error('Error al iniciar audio:', err);
-                stopAudioProcessing();
-            }
-        }
-
-        function stopAudioProcessing() {
-            isRunning = false;
-            
-            if (javascriptNode) javascriptNode.disconnect();
-            if (microphoneStream) {
-                microphoneStream.getTracks().forEach(track => track.stop());
-            }
-            if (audioCtx) audioCtx.close();
-
-            statusDot.className = "w-4 h-4 rounded-full bg-slate-500";
-            updateButtonState(false);
-            
-            // Resetear interfaz visual
-            feedbackText.innerText = "Ejercicio Pausado";
-            feedbackText.className = "text-2xl md:text-3xl font-extrabold tracking-wide text-slate-400 transition-all duration-300";
-            drawCircle(0.2, { r: 100, g: 116, b: 139 }); // Esfera gris en pausa
-        }
-
-        // --- BUCLE DE ANIMACIÓN Y RENDERIZADO VISUAL ---
-
-        function renderLoop() {
-            if (!isRunning) return;
-
-            // 1. Suavizado del CPPS (Filtro pasa-bajas)
-            smoothedCPPS += (currentCPPS - smoothedCPPS) * config.smoothing;
-
-            // 2. Mapeo de CPPS al Radio y Color del Círculo
-            if (currentRMS < config.noiseGate) {
-                // Silencio: Mantener esfera pequeña neutral
-                targetCircleRadius = 0.2;
-                targetColor = { r: 71, g: 85, b: 105 }; // Slate-600
-                feedbackText.innerText = "Inicie la emisión...";
-                feedbackText.className = "text-2xl md:text-3xl font-extrabold tracking-wide text-slate-400 transition-all duration-300";
-            } else {
-                // Calcular normalización (0.0 a 1.0) entre Min y Max CPPS
-                let norm = (smoothedCPPS - config.minCPPS) / (config.maxCPPS - config.minCPPS);
-                norm = Math.max(0, Math.min(1, norm)); // Clampear a [0, 1]
-
-                // Radio dinámico (del 20% al 85% del área)
-                targetCircleRadius = 0.2 + (norm * 0.65);
-
-                // Interpolación de Color: Rojo (0.0) -> Amarillo/Naranja (0.5) -> Verde/Azul Liberado (1.0)
-                if (norm < 0.5) {
-                    // Transición de Rojo (#ef4444) a Naranja (#f97316)
-                    let subNorm = norm * 2;
-                    targetColor = {
-                        r: Math.round(239 + (249 - 239) * subNorm),
-                        g: Math.round(68 + (115 - 68) * subNorm),
-                        b: Math.round(68 + (22 - 68) * subNorm)
-                    };
-                    feedbackText.innerText = "Voz con Presión / Empuje";
-                    feedbackText.className = "text-2xl md:text-3xl font-extrabold tracking-wide text-red-400 transition-all duration-300";
-                } else {
-                    // Transición de Naranja (#f97316) a Verde Esmeralda Bright (#10b981)
-                    let subNorm = (norm - 0.5) * 2;
-                    targetColor = {
-                        r: Math.round(249 + (16 - 249) * subNorm),
-                        g: Math.round(115 + (185 - 115) * subNorm),
-                        b: Math.round(22 + (129 - 22) * subNorm)
-                    };
-                    feedbackText.innerText = "¡Voz Fluida y Liberada!";
-                    feedbackText.className = "text-2xl md:text-3xl font-extrabold tracking-wide text-emerald-400 transition-all duration-300";
-                }
-            }
-
-            // 3. Animación fluida de interpolación (Damping)
-            currentCircleRadius += (targetCircleRadius - currentCircleRadius) * 0.15;
-            currentColor.r += Math.round((targetColor.r - currentColor.r) * 0.15);
-            currentColor.g += Math.round((targetColor.g - currentColor.g) * 0.15);
-            currentColor.b += Math.round((targetColor.b - currentColor.b) * 0.15);
-
-            // 4. Dibujar en Canvas
-            drawCircle(currentCircleRadius, currentColor);
-
-            requestAnimationFrame(renderLoop);
-        }
-
-        /**
-         * Renderizado en Canvas con degradado radial brillante
-         */
-        function drawCircle(radiusScale, color) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const maxRadius = Math.min(canvas.width, canvas.height) / 2 * 0.9;
-            const radius = maxRadius * radiusScale;
-
-            // Degradado radial para dar volumen y brillo estético
-            const gradient = ctx.createRadialGradient(
-                centerX - radius * 0.2, centerY - radius * 0.2, radius * 0.1,
-                centerX, centerY, radius
-            );
-
-            const rgbStr = `${color.r}, ${color.g}, ${color.b}`;
-            gradient.addColorStop(0, `rgba(${rgbStr}, 1)`);
-            gradient.addColorStop(0.7, `rgba(${rgbStr}, 0.85)`);
-            gradient.addColorStop(1, `rgba(${rgbStr}, 0.4)`);
-
-            // Sombra/Resplandor exterior
-            ctx.shadowColor = `rgba(${rgbStr}, 0.6)`;
-            ctx.shadowBlur = radius * 0.4;
-
-            // Dibujar esfera
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, Math.max(10, radius), 0, Math.PI * 2);
-            ctx.fillStyle = gradient;
-            ctx.fill();
-
-            // Anillo exterior de guía
-            ctx.shadowBlur = 0;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, maxRadius * 0.85, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.lineWidth = 4;
-            ctx.setLineDash([8, 8]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        // --- INTERACCIÓN Y CONTROLES ---
-
-        function updateButtonState(active) {
-            if (active) {
-                btnText.innerText = "PAUSAR EJERCICIO";
-                startStopBtn.className = "w-full max-w-md py-5 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white font-bold text-2xl rounded-2xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center space-x-3";
-                playIcon.innerHTML = `<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>`;
-            } else {
-                btnText.innerText = "INICIAR EJERCICIO";
-                startStopBtn.className = "w-full max-w-md py-5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-2xl rounded-2xl shadow-lg hover:shadow-emerald-900/40 transform active:scale-95 transition-all flex items-center justify-center space-x-3";
-                playIcon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>`;
-            }
-        }
-
-        startStopBtn.addEventListener('click', () => {
+        // --- CONTROL DE AUDIO ---
+        async function toggleAudio() {
             if (isRunning) {
-                stopAudioProcessing();
+                stopAudio();
             } else {
-                startAudioProcessing();
+                await startAudio();
             }
-        });
+        }
 
-        // Eventos del Panel de Configuración
-        toggleConfigBtn.addEventListener('click', () => configPanel.classList.remove('hidden'));
-        closeConfigBtn.addEventListener('click', () => configPanel.classList.add('hidden'));
-        saveConfigBtn.addEventListener('click', () => configPanel.classList.add('hidden'));
-
-        // Deslizadores de Calibración
-        minThresholdSlider.addEventListener('input', (e) => {
-            config.minCPPS = parseFloat(e.target.value);
-            minThresholdLabel.innerText = config.minCPPS.toFixed(1) + ' dB';
-        });
-
-        maxThresholdSlider.addEventListener('input', (e) => {
-            config.maxCPPS = parseFloat(e.target.value);
-            maxThresholdLabel.innerText = config.maxCPPS.toFixed(1) + ' dB';
-        });
-
-        noiseGateSlider.addEventListener('input', (e) => {
-            config.noiseGate = parseFloat(e.target.value);
-            noiseGateLabel.innerText = config.noiseGate.toFixed(3);
-        });
-
-        // Selección de Modos de Trabajo
-        modeVowelBtn.addEventListener('click', () => {
-            config.mode = 'vowel';
-            config.minCPPS = 8.0;
-            config.maxCPPS = 16.0;
-            minThresholdSlider.value = 8.0;
-            maxThresholdSlider.value = 16.0;
-            minThresholdLabel.innerText = '8.0 dB';
-            maxThresholdLabel.innerText = '16.0 dB';
-            
-            modeVowelBtn.className = "py-2 px-3 bg-emerald-600 text-white rounded-lg font-medium text-sm border border-emerald-500 shadow";
-            modeSpeechBtn.className = "py-2 px-3 bg-slate-700 text-slate-300 rounded-lg font-medium text-sm border border-slate-600 hover:bg-slate-650";
-        });
-
-        modeSpeechBtn.addEventListener('click', () => {
-            config.mode = 'speech';
-            config.minCPPS = 5.0;
-            config.maxCPPS = 12.0;
-            minThresholdSlider.value = 5.0;
-            maxThresholdSlider.value = 12.0;
-            minThresholdLabel.innerText = '5.0 dB';
-            maxThresholdLabel.innerText = '12.0 dB';
-
-            modeSpeechBtn.className = "py-2 px-3 bg-emerald-600 text-white rounded-lg font-medium text-sm border border-emerald-500 shadow";
-            modeVowelBtn.className = "py-2 px-3 bg-slate-700 text-slate-300 rounded-lg font-medium text-sm border border-slate-600 hover:bg-slate-650";
-        });
-
-        // Dibujar estado neutro inicial en Canvas
-        drawCircle(0.2, { r: 100, g: 116, b: 139 });
-    </script>
-</body>
-</html>
+        async function startAudio() {
